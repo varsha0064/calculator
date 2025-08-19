@@ -1,0 +1,446 @@
+<!DOCTYPE html><html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Calculator</title>
+  <style>
+    :root {
+      --bg: #0f172a;       /* slate-900 */
+      --panel: #111827;    /* gray-900 */
+      --btn: #1f2937;      /* gray-800 */
+      --btn-light: #374151;/* gray-700 */
+      --accent: #4f46e5;   /* indigo-600 */
+      --danger: #ef4444;   /* red-500 */
+      --text: #e5e7eb;     /* gray-200 */
+      --muted: #9ca3af;    /* gray-400 */
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --radius: 18px;
+    }* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  background: radial-gradient(1200px 600px at 70% -20%, #1e293b 0%, #0f172a 60%);
+  color: var(--text);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.calc {
+  width: min(420px, 94vw);
+  background: linear-gradient(180deg, #0b1224, #0c1326);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.display {
+  min-height: 140px;
+  padding: 18px 20px;
+  display: grid;
+  align-content: end;
+  gap: 6px;
+  background: linear-gradient(180deg, #0b1020, #0b0f1d);
+}
+
+.history {
+  min-height: 22px;
+  text-align: right;
+  color: var(--muted);
+  letter-spacing: .5px;
+  font-size: 14px;
+  word-break: break-all;
+}
+
+.result {
+  font-size: clamp(28px, 6.5vw, 40px);
+  text-align: right;
+  font-weight: 700;
+  letter-spacing: 1px;
+  word-break: break-all;
+}
+
+.keys {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  padding: 16px;
+  background: #0b0f1d;
+}
+
+button {
+  appearance: none;
+  border: 0;
+  padding: 18px 14px;
+  font-size: 18px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #1b2436, #151b2a);
+  color: var(--text);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 6px 14px rgba(0,0,0,.35);
+  cursor: pointer;
+  transition: transform .06s ease, filter .2s ease, background .2s ease;
+  user-select: none;
+}
+
+button:active { transform: translateY(2px) scale(.98); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.op { background: linear-gradient(180deg, #273045, #1b2336); }
+.accent { background: linear-gradient(180deg, #4f46e5, #4338ca); font-weight: 700; }
+.danger { background: linear-gradient(180deg, #ef4444, #dc2626); }
+.wide { grid-column: span 2; }
+
+.footer {
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+  padding: 6px 0 14px;
+  background: #0b0f1d;
+}
+
+/* Small screens improvements */
+@media (max-width: 360px) {
+  button { padding: 16px 10px; font-size: 16px; }
+  .display { min-height: 120px; }
+}
+
+/* --- Base Converter panel styles --- */
+.panel {
+  width: min(420px, 94vw);
+  margin: 14px auto 0;
+  background: #0b0f1d;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px;
+}
+.panel h3 { margin: 0 0 10px; font-size: 16px; color: var(--text); }
+.panel .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.panel label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 6px; }
+.panel input, .panel select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: #0f1424;
+  color: var(--text);
+}
+.panel .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.panel .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+.panel .error { color: var(--danger); font-size: 12px; min-height: 16px; }
+.panel button {
+  padding: 12px;
+  font-size: 14px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #1b2436, #151b2a);
+}
+.panel .accent { background: linear-gradient(180deg, #4f46e5, #4338ca); }
+
+  </style>
+</head>
+<body>
+  <main class="calc" role="application" aria-label="Calculator">
+    <section class="display" aria-live="polite">
+      <div class="history" id="history" aria-label="History"></div>
+      <div class="result" id="result" aria-label="Result">0</div>
+    </section><section class="keys">
+  <button class="danger" data-action="clear" aria-label="Clear all">AC</button>
+  <button class="op" data-action="backspace" aria-label="Backspace">⌫</button>
+  <button class="op" data-value="%">%</button>
+  <button class="op" data-value="/">÷</button>
+
+  <button data-value="7">7</button>
+  <button data-value="8">8</button>
+  <button data-value="9">9</button>
+  <button class="op" data-value="*">×</button>
+
+  <button data-value="4">4</button>
+  <button data-value="5">5</button>
+  <button data-value="6">6</button>
+  <button class="op" data-value="-">−</button>
+
+  <button data-value="1">1</button>
+  <button data-value="2">2</button>
+  <button data-value="3">3</button>
+  <button class="op" data-value="+">+</button>
+
+  <button data-action="sign" aria-label="Toggle sign">±</button>
+  <button data-value="0">0</button>
+  <button data-value=".">.</button>
+  <button class="accent" data-action="equals" aria-label="Equals">=</button>
+</section>
+<div class="footer">Keyboard: 0-9  + - * /  .  Enter  Backspace  Esc</div>
+
+  </main>  <!-- Base Converter Panel -->  <section class="panel" id="base-converter" aria-label="Base Converter">
+    <h3>Number Base Converter (Binary / Decimal / Hex)</h3><div class="row">
+  <div>
+    <label for="base-input">Enter number</label>
+    <input id="base-input" placeholder="e.g., 1010 or 255 or FF" />
+  </div>
+  <div>
+    <label for="base-from">This number is in base</label>
+    <select id="base-from">
+      <option value="2">Binary (base 2)</option>
+      <option value="8">Octal (base 8)</option>
+      <option value="10" selected>Decimal (base 10)</option>
+      <option value="16">Hex (base 16)</option>
+    </select>
+  </div>
+</div>
+
+<div class="hint">Supports negative numbers too (e.g., -1010, -FF).</div>
+<div id="base-error" class="error" role="alert"></div>
+
+<div class="grid" style="margin-top:10px">
+  <div>
+    <label for="out-bin">Binary (base 2)</label>
+    <input id="out-bin" readonly />
+  </div>
+  <div>
+    <label for="out-oct">Octal (base 8)</label>
+    <input id="out-oct" readonly />
+  </div>
+  <div>
+    <label for="out-dec">Decimal (base 10)</label>
+    <input id="out-dec" readonly />
+  </div>
+  <div>
+    <label for="out-hex">Hex (base 16)</label>
+    <input id="out-hex" readonly />
+  </div>
+</div>
+
+<div style="margin-top:12px; display:flex; gap:10px;">
+  <button id="btn-base-convert" class="accent">Convert</button>
+  <button id="btn-base-clear">Clear</button>
+</div>
+
+  </section>  <script>
+    const resultEl = document.getElementById('result');
+    const historyEl = document.getElementById('history');
+    const keys = document.querySelector('.keys');
+
+    let expr = '';
+    let justEvaluated = false;
+
+    const isOperator = ch => /[+\-*/%]/.test(ch);
+
+    function updateDisplay() {
+      resultEl.textContent = expr || '0';
+    }
+
+    function append(value) {
+      if (justEvaluated && !isOperator(value)) {
+        // Start a new expression if a number/dot is pressed after equals
+        expr = '';
+      }
+      justEvaluated = false;
+
+      // Prevent multiple operators in a row (e.g., 5 ++ 3)
+      if (isOperator(value) && (expr === '' || isOperator(expr.at(-1)))) {
+        // Allow leading minus for negative numbers
+        if (!(value === '-' && expr === '')) return;
+      }
+
+      // Prevent multiple decimal points in the same number segment
+      if (value === '.') {
+        const lastNumber = expr.split(/[+\-*/%]/).pop();
+        if (lastNumber.includes('.')) return;
+        if (lastNumber === '') expr += '0';
+      }
+
+      // Avoid leading zeros like 00
+      if (value === '0') {
+        const parts = expr.split(/[+\-*/%]/);
+        const last = parts.pop();
+        if (last === '0') return;
+      }
+
+      expr += value;
+      updateDisplay();
+    }
+
+    function clearAll() {
+      expr = '';
+      historyEl.textContent = '';
+      updateDisplay();
+      justEvaluated = false;
+    }
+
+    function backspace() {
+      if (justEvaluated) { expr = ''; justEvaluated = false; }
+      expr = expr.slice(0, -1);
+      updateDisplay();
+    }
+
+    function toggleSign() {
+      // Toggle sign of the last number segment
+      const parts = expr.split(/([+\-*/%])/);
+      if (!parts.length) return;
+      // Find last number index
+      let i = parts.length - 1;
+      while (i >= 0 && parts[i] === '') i--;
+      if (i < 0) return;
+      // If last token is operator, toggle the next number (if any)
+      if (/[+\-*/%]/.test(parts[i])) {
+        if (i + 1 < parts.length && parts[i + 1] !== '') {
+          parts[i + 1] = String(-Number(parts[i + 1]));
+        }
+      } else {
+        parts[i] = String(-Number(parts[i]));
+      }
+      expr = parts.join('');
+      updateDisplay();
+    }
+
+    function safeEval(expression) {
+      // Only allow digits, operators, decimal point and parentheses (not used here)
+      if (!/^[-+*/%().\d\s]+$/.test(expression)) return NaN;
+      try {
+        // Use Function for evaluation in a limited way
+        const value = Function('return (' + expression + ')')();
+        return Number.isFinite(value) ? value : NaN;
+      } catch {
+        return NaN;
+      }
+    }
+
+    function equals() {
+      if (!expr) return;
+      const value = safeEval(expr.replace(/÷/g,'/').replace(/×/g,'*'));
+      if (Number.isNaN(value)) {
+        historyEl.textContent = '';
+        resultEl.textContent = 'Error';
+        justEvaluated = true;
+        return;
+      }
+      historyEl.textContent = expr + ' =';
+      expr = String(value);
+      updateDisplay();
+      justEvaluated = true;
+    }
+
+    keys.addEventListener('click', (e) => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      const val = btn.dataset.value;
+      const action = btn.dataset.action;
+      if (val) return append(val);
+      if (action === 'clear') return clearAll();
+      if (action === 'backspace') return backspace();
+      if (action === 'equals') return equals();
+      if (action === 'sign') return toggleSign();
+    });
+
+    // Keyboard support
+    window.addEventListener('keydown', (e) => {
+      const { key } = e;
+      if (/^[0-9]$/.test(key)) return append(key);
+      if (["+","-","*","/","%"].includes(key)) return append(key);
+      if (key === '.') return append('.');
+      if (key === 'Enter' || key === '=') { e.preventDefault(); return equals(); }
+      if (key === 'Backspace') return backspace();
+      if (key === 'Escape') return clearAll();
+    });
+
+    updateDisplay();
+  </script>  <script>
+    // ===== Base Converter Logic =====
+    (function(){
+      const inputEl = document.getElementById('base-input');
+      const fromEl = document.getElementById('base-from');
+      const errEl = document.getElementById('base-error');
+      const outBin = document.getElementById('out-bin');
+      const outOct = document.getElementById('out-oct');
+      const outDec = document.getElementById('out-dec');
+      const outHex = document.getElementById('out-hex');
+      const btnConvert = document.getElementById('btn-base-convert');
+      const btnClear = document.getElementById('btn-base-clear');
+
+      function isDigitForBase(ch, base){
+        const code = ch.charCodeAt(0);
+        if (base === 2) return ch === '0' || ch === '1';
+        if (base === 8) return code >= 48 && code <= 55; // '0'..'7'
+        if (base === 10) return code >= 48 && code <= 57; // '0'..'9'
+        if (base === 16){
+          const isNum = code >= 48 && code <= 57; // 0-9
+          const up = ch.toUpperCase();
+          const isHex = up >= 'A' && up <= 'F';
+          return isNum || isHex;
+        }
+        return false;
+      }
+
+      function isValidForBase(str, base){
+        if (typeof str !== 'string' || !str.length) return false;
+        const s = str.trim();
+        const neg = s.startsWith('-');
+        const core = neg ? s.slice(1) : s;
+        if (core.length === 0) return false;
+        for (let i = 0; i < core.length; i++){
+          if (!isDigitForBase(core[i], base)) return false;
+        }
+        return true;
+      }
+
+      function toDecimal(str, base){
+        const s = str.trim();
+        const neg = s.startsWith('-');
+        const core = neg ? s.slice(1) : s;
+        let val = 0;
+        for (let i = 0; i < core.length; i++){
+          const ch = core[i].toUpperCase();
+          let digit = ch >= 'A' ? (10 + ch.charCodeAt(0) - 65) : (ch.charCodeAt(0) - 48);
+          val = val * base + digit;
+        }
+        return neg ? -val : val;
+      }
+
+      function fromDecimal(n, base){
+        if (n === 0) return '0';
+        const neg = n < 0;
+        let x = Math.abs(n);
+        let out = '';
+        while (x > 0){
+          const d = x % base;
+          out = (d < 10 ? String(d) : String.fromCharCode(55 + d)) + out; // 10->A
+          x = Math.floor(x / base);
+        }
+        return (neg ? '-' : '') + out;
+      }
+
+      function clearOutputs(){
+        outBin.value = outOct.value = outDec.value = outHex.value = '';
+      }
+
+      function convert(){
+        const base = Number(fromEl.value);
+        const s = inputEl.value.trim();
+        errEl.textContent = '';
+        clearOutputs();
+        if (!s){ errEl.textContent = 'Please enter a number.'; return; }
+        if (!isValidForBase(s, base)){
+          errEl.textContent = 'Invalid digits for base ' + base + '.';
+          return;
+        }
+        const dec = toDecimal(s, base);
+        outDec.value = String(dec);
+        outBin.value = fromDecimal(dec, 2);
+        outOct.value = fromDecimal(dec, 8);
+        outHex.value = fromDecimal(dec, 16);
+      }
+
+      if (btnConvert) btnConvert.addEventListener('click', convert);
+      if (btnClear) btnClear.addEventListener('click', () => {
+        inputEl.value = '';
+        errEl.textContent = '';
+        clearOutputs();
+        inputEl.focus();
+      });
+      if (inputEl) inputEl.addEventListener('input', () => { if (inputEl.value) convert(); else clearOutputs(); });
+      if (fromEl) fromEl.addEventListener('change', () => { if (inputEl.value) convert(); });
+    })();
+  </script></body>
+</html>
